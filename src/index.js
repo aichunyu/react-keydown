@@ -1,5 +1,5 @@
 // @keydown and @keydownScoped
-export { default, keydownScoped } from './decorators';
+//export { default, keydownScoped } from './decorators';
 
 // setBinding - only useful if you're not going to use decorators
 export { setBinding } from './store';

@@ -7,21 +7,46 @@ import matchKeys   from './lib/match_keys';
 import parseKeys   from './lib/parse_keys';
 import uuid        from './lib/uuid';
 
+/*
+import { Stack } from '../collection/Stack'
+import { OrderedSet } from '../collection/OrderedSet'
+import { SetB } from '../collection/Set'
+import { Record } from '../collection/Record'
+import { Range } from '../collection/Range'
+import { Repeat } from '../collection/Repeat'
+import { is } from '../collection/is'
+import { fromJS } from '../collection/fromJS'
+
+import { Iterable } from '../collection/IterableImpl'
+import { Seq } from '../collection/Seq'
+import { Collection } from '../collection/Collection'
+import { OrderedMap } from '../collection/OrderedMap'
+import { List } from '../collection/List'
+import { MapA } from '../collection/Map'
+*/
+
+import Immutable from 'immutable'
+
 /**
  * private
  * 
  */
 
 // dict for class prototypes => bindings
-const _handlers = new Map();
+//const _handlers = new Map();
+const _handlers2 = new Array();
+//const _handlers = Immutable.Map();
 
 // all mounted instances that have keybindings
-const _instances = new Set();
+//const _instances = new Set();
+const _instances2 = new Array();
 
 // for testing
 export function _resetStore() {
-  _handlers.clear();
-  _instances.clear();
+  //_handlers.clear();
+  //_instances.clear();
+  _handlers2.splice(0,_handlers2.length);
+  _instances2.splice(0,_instances2.length);
 }
 
 
@@ -45,15 +70,22 @@ const Store = {
     // effectively deactivate keydown handling by capping the set of instances
     // with `null`.
     if ( !instancesArray.length ) {
-      _instances.add( null );
+       //_instances.add( null );
     } else {
-      _instances.delete( null );
+       //_instances.delete( null );
       
       // deleting and then adding the instance(s) has the effect of sorting the set
       // according to instance activation (ascending)
       instancesArray.forEach( instance => {
-        _instances.delete( instance );
-        _instances.add( instance );
+        //_instances.delete( instance );
+        //_instances.add( instance );
+        let i = _instances2.length;
+        while (i--) {
+          if(_instances2[i] == instance){
+             _instances2.pop();
+          }
+        }
+        _instances2.push(instance);
       });
     }
   },
@@ -67,16 +99,34 @@ const Store = {
    */
   deleteInstance( target ) {
     _instances.delete( target );
+    let i = _instances2.length;
+    while (i--) {
+      if(_instances2[i] == target){
+          _instances2.pop();
+      }
+    }
   },
 
   findBindingForEvent( event ) {
-    if ( !_instances.has( null ) ) {
+//    if ( !_instances.has( null ) ) {
+    if ( _instances2 ) {
       const keyMatchesEvent = keySet => matchKeys( { keySet, event } );
 
+      let i = _instances2.length;
+      while (i--) {
+        let instance = _instances2[i]
+        const bindings = this.getBinding( instance );
+        for ( const [ keySets, fn ] of bindings ) {
+          if ( allKeys( keySets ) || keySets.some( keyMatchesEvent ) ) {
+            return { fn, instance };
+          }
+        }
+      }
+/*
       // loop through instances in reverse activation order so that most
       // recently activated instance gets first dibs on event
       for ( const instance of [ ..._instances ].reverse() ) {
-        const bindings = this.getBinding( instance.constructor.prototype );
+        const bindings = this.getBinding( instance );
         for ( const [ keySets, fn ] of bindings ) {
           if ( allKeys( keySets ) || keySets.some( keyMatchesEvent ) ) {
             // return when matching keybinding is found - i.e. only one
@@ -88,6 +138,7 @@ const Store = {
           }
         }
       }
+*/
     }
     return null;
   },
@@ -100,7 +151,19 @@ const Store = {
    * @return {object} The object containing bindings for the given class
    */
   getBinding( { __reactKeydownUUID } ) {
-    return _handlers.get( __reactKeydownUUID );
+    //if(!_handlers) return null;
+    if(!_handlers2) return null;
+    if(!__reactKeydownUUID) return null;
+    let i = _handlers2.length;
+    while (i--) {
+      let instance = _handlers2[i];
+      if(instance.targetUuid == __reactKeydownUUID){
+        let keySets = instance.keySets;
+        let fn = instance.fn; 
+          return [[keySets, fn]];
+      }
+    }
+    //return _handlers.get( __reactKeydownUUID );
   },
 
   /**
@@ -110,7 +173,7 @@ const Store = {
    * @return {set} All stored instances (all mounted component instances with keybindings)
    */
   getInstances() {
-    return _instances;
+    return _instances2;
   },
 
   /**
@@ -120,7 +183,7 @@ const Store = {
    * @return {number} Size of the set of all stored instances
    */
   isEmpty() {
-    return !_instances.size;
+    return !_instances2.size;
   },
 
   /**
@@ -137,9 +200,24 @@ const Store = {
     const { __reactKeydownUUID } = target;
     if ( !__reactKeydownUUID ) {
       target.__reactKeydownUUID = uuid();
-      _handlers.set( target.__reactKeydownUUID, new Map( [ [ keySets, fn ] ] ) );
+      //_handlers.set( target.__reactKeydownUUID, [[ keySets, fn ]] );
+      const targetUuid = target.__reactKeydownUUID;
+      const hand = {
+        targetUuid,
+        keySets,
+        fn
+      }
+      _handlers2.push(hand);
+      //_handlers.set( target.__reactKeydownUUID,"1");
     } else {
-      _handlers.get( __reactKeydownUUID ).set( keySets, fn );
+      //_handlers.get( __reactKeydownUUID ).set( keySets, fn );
+      const targetUuid = target.__reactKeydownUUID;
+      const hand = {
+        targetUuid,
+        keySets,
+        fn
+      }
+      _handlers2.push(hand);
     }
   }
 };
